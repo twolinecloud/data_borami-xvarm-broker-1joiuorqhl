@@ -1,47 +1,50 @@
+server:
+  port: ${SERVER_PORT:8082}
+  shutdown: graceful
+
 spring:
   application:
-    name: borami-xvarm-broker-1joiuorqhl
-    version: v1
-    desc: borami-xvarm-broker-1joiuorqhl RESTful API Service
+    name: borami-xvarm-broker
   jackson:
     date-format: "yyyy-MM-dd'T'HH:mm:ss"
+    default-property-inclusion: non_null
 
-server:
-  port: 8080
-  forward-headers-strategy: framework
+broker:
+  xvarm:
+    # DUMMY : XVARM 없이 가짜 음성 파일을 만든다(현재 기본)
+    # REAL  : 실제 XVARM 호출 — 사양 미확정이라 호출 시 명시적으로 실패한다(계획서 Q3)
+    mode: ${BROKER_XVARM_MODE:DUMMY}
+    endpoint: ${BROKER_XVARM_ENDPOINT:}
 
-service-path: ${SERVICE_PATH:}
+  extract:
+    # ── XVARM 이 파일을 떨궈 놓는 임시 디렉터리 ────────────────────────────
+    #   실제 보라미에서는 /data001/doc01/recv/XVARM 같은 경로이고,
+    #   ESB Agent 가 이 폴더를 보고 AI 플랫폼으로 동기화한다.
+    #
+    #   ⚠ 로컬 연동 시험에는 ESB 가 없다. 그래서 브로커가 voice-collector 의
+    #     수신 폴더에 직접 쓰게 해 ESB 구간을 생략한다:
+    #
+    #     BROKER_OUTPUT_DIR=D:/Twoline_Project/data_voice-collector/work/voice_raw/meet
+    #
+    #   (반대로 voice-collector 의 VOICE_MEET_DIR 를 이 폴더로 맞춰도 된다)
+    output-dir: ${BROKER_OUTPUT_DIR:./work/xvarm_out}
+
+    # 추출이 즉시 끝나지 않는다는 사실을 흉내 낸다. 호출 측의 폴링 로직이
+    # 실제로 도는지 확인하려면 지연이 있어야 한다. 0 이면 즉시 완료.
+    simulated-delay-ms: ${BROKER_DELAY_MS:1500}
+
+    # DUMMY 가 만들 무음 WAV 길이(초). 파일 크기를 좌우한다.
+    dummy-audio-seconds: ${BROKER_AUDIO_SEC:2}
+
+    # 완료된 작업을 메모리에 들고 있는 시간(분).
+    job-retention-min: ${BROKER_JOB_RETENTION_MIN:60}
 
 springdoc:
-  cache:
-    disabled: true
-  version: 1
-  api-docs:
-    path: /v3/api-docs
-    enabled: true
-    resolve-schema-properties: true
-  default-consumes-media-type: application/json
-  default-produces-media-type: application/json
   swagger-ui:
-    operations-sorter: alpha
-    tags-sorter: alpha
     path: /swagger-ui.html
-    url: ${SERVICE_PATH:}/v3/api-docs
-    config-url: ${SERVICE_PATH:}/v3/api-docs/swagger-config
-    disable-swagger-default-url: true
-    display-query-params-without-oauth2: true
-    show-common-extensions: true
-  show-actuator: true
-  show-login-endpoint: true
+    tags-sorter: alpha
+    operations-sorter: alpha
 
 logging:
-  config: classpath:log4j2-spring.yml
   level:
-    org.springframework.web.servlet.PageNotFound: 'OFF'
-
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: '*'
+    com.correction.borami.xvarm: ${LOG_LEVEL:INFO}

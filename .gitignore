@@ -10,6 +10,9 @@
 *.launch
 .settings/
 *.iml
+*.ipr
+*.iws
+.vscode/
 eclipse-launch-profiles
 
 #System Files
@@ -17,4 +20,9 @@ eclipse-launch-profiles
 .DS_Store
 Thumbs.db
 
+#Log Files
+logs/
+*.log
 
+# DUMMY 어댑터가 만드는 임시 산출물 디렉터리
+/work/
