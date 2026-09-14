@@ -1,0 +1,47 @@
+# ══════════════════════════════════════════════════════════════════════════
+#  로컬 — IntelliJ 에서 띄워 voice-collector 와 붙여 보는 용도
+# ══════════════════════════════════════════════════════════════════════════
+#  IntelliJ 실행 구성에 프로파일만 local 로 주면 된다.
+#    Run/Debug Configurations → Active profiles: local
+#  또는  mvn spring-boot:run -Dspring-boot.run.profiles=local
+#
+#  ── 왜 별도 프로파일이 필요한가 ─────────────────────────────────────────
+#  로컬에는 메타빌드 ESB 가 없다. 원래 구조는
+#      브로커가 보라미 임시 폴더에 파일 생성  →  ESB FILE2FILE 이 AI 플랫폼으로 동기화
+#  인데, 가운데 ESB 가 없으니 브로커가 만든 파일이 수집기에 영영 닿지 않는다.
+#  그래서 로컬에서는 브로커가 수집기의 접견 수신 폴더에 <b>직접</b> 쓰게 해서
+#  ESB 구간을 생략한다.
+
+server:
+  port: ${SERVER_PORT:8082}
+
+broker:
+  xvarm:
+    # 로컬에는 XVARM 솔루션이 없다. 가짜 WAV 를 만들어 수집기의 폴링·도착 판정 로직을
+    # 실제로 돌려 본다. REAL 은 호출 사양 미확정이라 호출 시 NOT_IMPLEMENTED 로 실패한다.
+    mode: ${BROKER_XVARM_MODE:DUMMY}
+
+  extract:
+    # voice-collector 의 voice.sync.meet-dir 과 <b>같은 폴더</b>를 가리켜야 한다.
+    #
+    #   수집기 기본값 : ./work/voice_raw/meet   (수집기 프로젝트 기준 상대경로)
+    #   브로커 기본값 : 아래 — 두 레포가 C:\Projects 아래 나란히 있다는 전제로 맞춰 뒀다
+    #
+    # ⚠ 두 경로가 어긋나면 조용히 실패한다. 브로커는 "추출 완료" 를 돌려주는데
+    #   수집기는 빈 폴더를 보며 수신 대기 타임아웃이 난다. 어디서 틀어졌는지 알려주는
+    #   신호가 없으므로, 배치를 돌리기 전에 시뮬레이터의 [브로커 연결 확인] 으로
+    #   두 경로가 같은지 눈으로 대조할 것.
+    #
+    # 레포 위치가 다르면 환경변수로 덮어쓴다:
+    #   BROKER_OUTPUT_DIR=D:/어딘가/data_voice-collector-x2daarjxe4/work/voice_raw/meet
+    output-dir: ${BROKER_OUTPUT_DIR:../data_voice-collector-x2daarjxe4/work/voice_raw/meet}
+
+    # 추출이 즉시 끝나지 않는다는 사실을 흉내 낸다. 수집기의 폴링이 실제로 도는지
+    # 보려면 지연이 있어야 한다. 0 이면 즉시 완료.
+    simulated-delay-ms: ${BROKER_DELAY_MS:1500}
+    dummy-audio-seconds: ${BROKER_AUDIO_SEC:2}
+    job-retention-min: ${BROKER_JOB_RETENTION_MIN:60}
+
+logging:
+  level:
+    com.correction.borami.xvarm: ${LOG_LEVEL:DEBUG}
