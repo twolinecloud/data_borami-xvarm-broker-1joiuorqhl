@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.serviceName }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: {{ .Values.serviceName }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Values.serviceName }}
+  # 1 고정. 이유는 values.yaml 의 replicas 주석 참고(작업 상태가 메모리에 있다).
+  replicas: {{ .Values.replicas }}
+  strategy:
+    # 상태가 메모리에 있으므로 두 파드가 겹치면 안 된다.
+    # RollingUpdate 로 새 파드를 먼저 띄우면 그 사이 접수·조회가 갈린다.
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.serviceName }}
+        type: springboot
+      annotations:
+        # actuator 를 넣지 않았으므로 프로메테우스 스크레이프 대상이 아니다.
+        # 지표가 필요해지면 micrometer 를 추가하는 대신, 개발계 전용 프로파일에서만
+        # 넣을 수 있는지 먼저 검토한다(운영 jar 의 의존성을 늘리지 않기 위해).
+        prometheus.io/scrape: "false"
+    spec:
+      containers:
+        - name: {{ .Values.serviceName }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.container.port }}
+          startupProbe:
+            tcpSocket:
+              port: {{ .Values.container.port }}
+            periodSeconds: {{ .Values.probe.startup.periodSeconds }}
+            timeoutSeconds: {{ .Values.probe.startup.timeoutSeconds }}
+            failureThreshold: {{ .Values.probe.startup.failureThreshold }}
+          readinessProbe:
+            tcpSocket:
+              port: {{ .Values.container.port }}
+            periodSeconds: {{ .Values.probe.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probe.readiness.timeoutSeconds }}
+          livenessProbe:
+            tcpSocket:
+              port: {{ .Values.container.port }}
+            periodSeconds: {{ .Values.probe.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probe.liveness.timeoutSeconds }}
+          envFrom:
+            - configMapRef:
+                name: {{ .Values.serviceName }}-config
+          resources:
+            requests:
+              memory: {{ .Values.resources.requests.memory | quote }}
+              cpu: {{ .Values.resources.requests.cpu | quote }}
+            limits:
+              memory: {{ .Values.resources.limits.memory | quote }}
+              cpu: {{ .Values.resources.limits.cpu | quote }}
+          volumeMounts:
+            # XVARM 산출 디렉터리. BROKER_OUTPUT_DIR 과 같은 경로여야 한다.
+            - name: xvarm-out
+              mountPath: {{ .Values.pvc.mountPath }}
+            - name: logs
+              mountPath: /logs
+      volumes:
+        - name: xvarm-out
+          persistentVolumeClaim:
+            claimName: {{ .Values.pvc.existingClaim | default .Values.pvc.name }}
+        - name: logs
+          emptyDir: {}
+      imagePullSecrets:
+        - name: {{ .Values.image.pullSecret }}

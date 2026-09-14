@@ -1,0 +1,34 @@
+# ══════════════════════════════════════════════════════════════════════════
+#  개발계 — AI 플랫폼 K8s (data-pipeline 네임스페이스) 파드로 뜬다
+# ══════════════════════════════════════════════════════════════════════════
+#  용도: 시뮬레이터 연동 + 투라코 내부망 통신 시험.
+#        아직 보라미 내부망에 붙을 수 없으므로 XVARM 은 DUMMY 로 흉내 낸다.
+#
+#  ⚠ 운영(보라미 서버) 배포와는 무관한 파일이다. 운영은 application-prod.yml 을 쓰며
+#    단일 jar 로 수동 배포한다. 이 프로파일은 K8s 쪽 값만 담는다.
+#
+#  값은 대부분 ConfigMap(borami-xvarm-broker-config)으로 주입되며, 아래는 기본값이다.
+
+server:
+  # Dockerfile 의 EXPOSE 와 Helm 차트의 probe·Service targetPort 가 모두 8080 이다.
+  # 여기서 어긋나면 파드는 뜨지만 probe 가 계속 실패해 CrashLoop 처럼 보인다.
+  port: ${SERVER_PORT:8080}
+
+broker:
+  xvarm:
+    # 개발계에는 XVARM 솔루션이 없다. 가짜 음성 파일을 만들어
+    # voice-collector 의 파일 도착 감시·폴링 로직을 실제로 돌려 본다.
+    mode: ${BROKER_XVARM_MODE:DUMMY}
+    endpoint: ${BROKER_XVARM_ENDPOINT:}
+
+  extract:
+    # PVC 마운트 경로. voice-collector 의 수신 디렉터리(/k8s/voice_raw/meet)와
+    # 같은 볼륨을 보게 맞추면 ESB 구간 없이 개발계 E2E 가 돈다.
+    output-dir: ${BROKER_OUTPUT_DIR:/k8s/xvarm_out}
+    simulated-delay-ms: ${BROKER_DELAY_MS:1500}
+    dummy-audio-seconds: ${BROKER_AUDIO_SEC:2}
+    job-retention-min: ${BROKER_JOB_RETENTION_MIN:60}
+
+logging:
+  level:
+    com.correction.borami.xvarm: ${LOG_LEVEL:DEBUG}

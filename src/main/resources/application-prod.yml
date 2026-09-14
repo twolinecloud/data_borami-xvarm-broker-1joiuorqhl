@@ -1,0 +1,60 @@
+# ══════════════════════════════════════════════════════════════════════════
+#  운영 — 교정본부 보라미 서버에 단일 jar 로 수동 배포
+# ══════════════════════════════════════════════════════════════════════════
+#  K8s 가 아니다. ConfigMap 도 Secret 도 없다. 값은 실행 시 환경변수나
+#  --spring.config.additional-location 로 준다.
+#
+#    java -jar borami-xvarm-broker.jar --spring.profiles.active=prod
+#
+#  또는 jar 옆에 application-prod.yml 을 두고 덮어쓴다(외부 파일이 내장본보다 우선한다).
+#
+#  ⚠ 아래 값은 전부 "확인 후 채울 자리"다. 보라미 서버의 OS·JDK·경로·포트가
+#    아직 확인되지 않았으므로(회의 미확정), 임의로 추정한 값을 넣지 않았다.
+
+server:
+  # 보라미 WAS 와 포트가 겹치면 안 된다. 배포 전 확인 필요.
+  port: ${SERVER_PORT:8082}
+
+broker:
+  xvarm:
+    # 운영은 실제 XVARM 을 부른다.
+    #
+    # ⚠ RealXvarmAdapter 는 아직 미구현이다(개발계획서 11장 Q3 — 호출 방식·입력
+    #   파라미터·출력 경로 규칙·에러 코드가 모두 미확정). 이 상태로 호출하면
+    #   NOT_IMPLEMENTED 로 명시적으로 실패한다.
+    #
+    #   일부러 그렇게 두었다. "추출했는데 파일이 없음"으로 위장하면 AI 플랫폼 쪽에서
+    #   파일을 기다리다 타임아웃 날 때까지 원인을 알 수 없다.
+    #   사양이 나오면 RealXvarmAdapter 만 채우면 되고 API 규격은 그대로다.
+    mode: ${BROKER_XVARM_MODE:REAL}
+    endpoint: ${BROKER_XVARM_ENDPOINT:}
+
+  extract:
+    # XVARM 이 파일을 떨궈 놓는 임시 디렉터리.
+    # 회의에서 언급된 형태는 /data001/doc01/recv/XVARM 계열이나 실제 경로는 미확인이다.
+    # 메타빌드 ESB Agent 가 이 폴더를 보고 AI 플랫폼으로 동기화한다.
+    #
+    # ⚠ 기본값을 두지 않았다. 비운 채로 기동하면 브로커가 기동 단계에서 명시적으로 죽는다.
+    #   기본값을 넣어 두면 잘못된 경로에 파일이 쌓이고 ESB 는 빈 폴더만 보게 되는데,
+    #   그건 에러 없이 아무 일도 일어나지 않는 상태라 원인 추적이 가장 어렵다.
+    output-dir: ${BROKER_OUTPUT_DIR:}
+
+    # 운영에는 시뮬레이션 지연이 없다.
+    simulated-delay-ms: 0
+    job-retention-min: ${BROKER_JOB_RETENTION_MIN:180}
+
+springdoc:
+  # 내부망이라 우리가 브로커에 붙어 볼 수단이 Swagger 뿐일 수 있어 기본은 켜 둔다.
+  # 보안 심사에서 지적되면 배포 시 BROKER_SWAGGER_ENABLED=false 로 끈다
+  # (API 자체는 그대로 동작한다).
+  api-docs:
+    enabled: ${BROKER_SWAGGER_ENABLED:true}
+  swagger-ui:
+    enabled: ${BROKER_SWAGGER_ENABLED:true}
+
+logging:
+  level:
+    com.correction.borami.xvarm: ${LOG_LEVEL:INFO}
+  file:
+    # 보라미 서버의 로그 적재 경로 정책을 확인해야 한다. 비우면 콘솔만 남는다.
+    name: ${LOG_FILE:}

@@ -1,0 +1,9 @@
+apiVersion: v2
+name: borami-xvarm-broker
+description: >-
+  보라미 XVARM 브로커 — 개발계(AI 플랫폼 K8s) 전용 배포 차트.
+  운영은 K8s 가 아니라 교정본부 보라미 서버에 단일 jar 로 수동 배포하므로
+  이 차트를 쓰지 않는다.
+type: application
+version: 0.1.0
+appVersion: "0.0.1"
