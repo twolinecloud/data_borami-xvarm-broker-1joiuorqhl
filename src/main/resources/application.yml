@@ -3,6 +3,15 @@ server:
   shutdown: graceful
 
 spring:
+  # ── 프로파일을 안 주면 local 이다 ──────────────────────────────────────
+  #   IntelliJ 나 java -jar 로 프로파일 없이 띄우면 이 파일(기본값)로 뜨는데, 그러면 출력
+  #   디렉터리가 ./work/xvarm_out 이라 voice-collector 는 빈 수신 폴더를 보며 5분을 기다린다.
+  #   실제로 여러 번 당했다(수집기 인수인계 5.1). 로컬 기동은 항상 local 로 떨어지게 한다.
+  #   K8s 는 Dockerfile 이 -Dspring.profiles.active=${SPRING_PROFILE} 를 박고, 운영은
+  #   --spring.profiles.active=prod 를 명시하므로 이 값은 그쪽에 영향이 없다
+  #   (default 는 active 가 하나도 없을 때만 쓰인다).
+  profiles:
+    default: local
   application:
     name: borami-xvarm-broker
   jackson:
@@ -22,11 +31,13 @@ broker:
     #   ESB Agent 가 이 폴더를 보고 AI 플랫폼으로 동기화한다.
     #
     #   ⚠ 로컬 연동 시험에는 ESB 가 없다. 그래서 브로커가 voice-collector 의
-    #     수신 폴더에 직접 쓰게 해 ESB 구간을 생략한다:
+    #     수신 폴더에 직접 쓰게 해 ESB 구간을 생략한다 — local 프로파일이 그렇게 맞춰져 있고
+    #     (application-local.yml), 프로파일을 안 주면 local 로 뜬다. 레포 위치가 다르면:
     #
-    #     BROKER_OUTPUT_DIR=D:/Twoline_Project/data_voice-collector/work/voice_raw/meet
+    #     BROKER_OUTPUT_DIR=<voice-collector 레포>/work/voice_raw/meet
     #
-    #   (반대로 voice-collector 의 VOICE_MEET_DIR 를 이 폴더로 맞춰도 된다)
+    #   응답의 filePath·상태의 outputDir 는 절대경로로 내려간다. 수집기가 그 경로에 파일이
+    #   실제로 있는데 자기 수신 폴더 밖이면 5분을 기다리지 않고 즉시 실패시키기 위해서다.
     output-dir: ${BROKER_OUTPUT_DIR:./work/xvarm_out}
 
     # 추출이 즉시 끝나지 않는다는 사실을 흉내 낸다. 호출 측의 폴링 로직이
