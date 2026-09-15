@@ -117,9 +117,18 @@ public class XvarmExtractService {
         return adapter.mode();
     }
 
-    /** 출력 디렉터리(진단용). */
+    /**
+     * 출력 디렉터리 — <b>절대경로로 정규화해서</b> 돌려준다.
+     *
+     * <p>여기서 나온 경로가 응답의 {@code filePath} 와 상태의 {@code outputDir} 가 된다.
+     * 상대경로(./work/xvarm_out)를 그대로 내보내면 호출 측은 그것이 <b>누구의</b> 작업 디렉터리
+     * 기준인지 알 수 없어, 파일이 엉뚱한 곳에 생겨도 수신 대기 타임아웃까지 아무 신호가 없다.
+     * 절대경로면 같은 파일시스템을 보는 로컬·개발계에서 수집기가 "파일은 있는데 내 수신 폴더
+     * 밖" 을 즉시 알아챌 수 있다. 운영에서는 보라미 서버 기준 경로라 수집기 쪽에 존재하지
+     * 않으므로 그 판정에 걸리지 않는다.</p>
+     */
     public Path outputDir() {
-        return Path.of(props.extract().outputDir());
+        return Path.of(props.extract().outputDir()).toAbsolutePath().normalize();
     }
 
     /** 보관 중인 작업 요약(진단용). */

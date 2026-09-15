@@ -90,7 +90,9 @@ AI 플랫폼의 배치는 재실행될 수 있고, 그때마다 XVARM 에 같은
 mvn spring-boot:run
 ```
 
-포트 **8082**. 기본은 `DUMMY` 어댑터라 XVARM 없이 재생 가능한 무음 WAV 를 만든다.
+**프로파일을 안 주면 `local` 로 뜬다**(`spring.profiles.default: local`). IntelliJ 에서 Active profiles 를
+비워 둬도 같다. 포트 **8082**, `DUMMY` 어댑터라 XVARM 없이 재생 가능한 무음 WAV 를 만들고,
+출력 폴더는 **옆 레포 voice-collector 의 접견 수신 폴더**(`../data_voice-collector-x2daarjxe4/work/voice_raw/meet`)다.
 
 ```bash
 curl -X POST http://localhost:8082/api/v1/xvarm/extract -H "Content-Type: application/json" -d "{\"docId\":\"DOC1\",\"fileKey\":\"FK1\",\"requestId\":\"REQ-1\",\"fileName\":\"test.m4a\"}"
@@ -103,23 +105,25 @@ curl http://localhost:8082/api/v1/xvarm/extract/REQ-1
 ### voice-collector 와 연동
 
 로컬에는 ESB 가 없다. 브로커가 **voice-collector 의 수신 폴더에 직접 쓰게** 해서 그 구간을 생략한다.
+두 레포가 `C:\Projects` 아래 나란히 있으면 아무 설정 없이 맞는다. 위치가 다르면 브로커 쪽에 준다:
 
 ```bash
-set BROKER_OUTPUT_DIR=D:/Twoline_Project/data_voice-collector/work/voice_raw/meet
+set BROKER_OUTPUT_DIR=<voice-collector 레포>/work/voice_raw/meet
 mvn spring-boot:run
 ```
 
-그리고 voice-collector 쪽에서 브로커 모드를 `REST` 로 바꾼다.
+voice-collector(local, 8085)는 기본이 브로커 `REST` · 주소 `http://localhost:8082` 라 따로 바꿀 것이 없다.
+배치 전에 시뮬레이터의 **[브로커 연결 확인]** 으로 두 경로가 같은지 대조한다.
 
-```bash
-curl -X PUT "http://localhost:8081/api/v1/mock/modes/broker?value=REST"
-```
+> 경로가 어긋나면 브로커는 "추출 완료" 를 돌려주지만 수집기는 빈 폴더를 본다. 응답의 `filePath` 가
+> 절대경로라, 수집기는 그 파일이 자기 파일시스템에 있는데 수신 폴더 밖이면 5분을 기다리지 않고
+> 즉시 실패시킨다(운영은 보라미 서버 경로라 수집기 쪽에 없어 이 판정에 걸리지 않는다).
 
 | 포트 | 서비스 |
 |---:|---|
-| 8080 | agent-connector |
-| 8081 | voice-collector |
+| 8080 | agent-connector (사내 타 서비스) |
 | **8082** | **borami-xvarm-broker** |
+| 8085 | voice-collector |
 | 8090 | log-collector |
 
 ---
