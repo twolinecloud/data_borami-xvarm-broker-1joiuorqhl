@@ -22,9 +22,9 @@ broker:
     endpoint: ${BROKER_XVARM_ENDPOINT:}
 
   extract:
-    # PVC 마운트 경로. voice-collector 의 수신 디렉터리(/k8s/voice_raw/meet)와
-    # 같은 볼륨을 보게 맞추면 ESB 구간 없이 개발계 E2E 가 돈다.
-    output-dir: ${BROKER_OUTPUT_DIR:/k8s/xvarm_out}
+    # PVC 마운트 경로. voice-collector 의 ESB 수신(접견) 디렉터리(/k8s/voice_collector/esb/meet)와
+    # 같은 볼륨을 보게 맞추면 ESB 구간 없이 개발계 E2E 가 돈다 (차트 ConfigMap 의 BROKER_OUTPUT_DIR 로 지정).
+    output-dir: ${BROKER_OUTPUT_DIR:/k8s/voice_collector/esb/meet}
     simulated-delay-ms: ${BROKER_DELAY_MS:1500}
     dummy-audio-seconds: ${BROKER_AUDIO_SEC:2}
     job-retention-min: ${BROKER_JOB_RETENTION_MIN:60}

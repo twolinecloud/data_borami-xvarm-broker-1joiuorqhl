@@ -22,19 +22,19 @@ broker:
     mode: ${BROKER_XVARM_MODE:DUMMY}
 
   extract:
-    # voice-collector 의 voice.sync.meet-dir 과 <b>같은 폴더</b>를 가리켜야 한다.
+    # voice-collector 의 ESB 수신(접견) 폴더 voice.dirs.receive-meet 과 <b>같은 폴더</b>를 가리켜야 한다.
     #
-    #   수집기 기본값 : ./work/voice_raw/meet   (수집기 프로젝트 기준 상대경로)
-    #   브로커 기본값 : 아래 — 두 레포가 C:\Projects 아래 나란히 있다는 전제로 맞춰 뒀다
+    #   수집기 기본값 : {ROOT_DIR}/esb/meet — ROOT_DIR 은 OS 로 자동 감지 (Windows C:/k8s/voice_collector, Linux /k8s/voice_collector)
+    #   브로커 기본값 : 아래 — 수집기의 Windows 표준 배치와 같게 맞춰 뒀다 (2026-09-17, 예전 ../data_voice-collector.../work/voice_raw/meet 에서 변경)
     #
     # ⚠ 두 경로가 어긋나면 조용히 실패한다. 브로커는 "추출 완료" 를 돌려주는데
     #   수집기는 빈 폴더를 보며 수신 대기 타임아웃이 난다. 어디서 틀어졌는지 알려주는
     #   신호가 없으므로, 배치를 돌리기 전에 시뮬레이터의 [브로커 연결 확인] 으로
     #   두 경로가 같은지 눈으로 대조할 것.
     #
-    # 레포 위치가 다르면 환경변수로 덮어쓴다:
-    #   BROKER_OUTPUT_DIR=D:/어딘가/data_voice-collector-x2daarjxe4/work/voice_raw/meet
-    output-dir: ${BROKER_OUTPUT_DIR:../data_voice-collector-x2daarjxe4/work/voice_raw/meet}
+    # 수집기의 ROOT_DIR 을 바꿨으면 환경변수로 덮어쓴다:
+    #   BROKER_OUTPUT_DIR=D:/어딘가/voice_collector/esb/meet
+    output-dir: ${BROKER_OUTPUT_DIR:C:/k8s/voice_collector/esb/meet}
 
     # 추출이 즉시 끝나지 않는다는 사실을 흉내 낸다. 수집기의 폴링이 실제로 도는지
     # 보려면 지연이 있어야 한다. 0 이면 즉시 완료.

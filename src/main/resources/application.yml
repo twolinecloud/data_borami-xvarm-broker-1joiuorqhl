@@ -34,7 +34,7 @@ broker:
     #     수신 폴더에 직접 쓰게 해 ESB 구간을 생략한다 — local 프로파일이 그렇게 맞춰져 있고
     #     (application-local.yml), 프로파일을 안 주면 local 로 뜬다. 레포 위치가 다르면:
     #
-    #     BROKER_OUTPUT_DIR=<voice-collector 레포>/work/voice_raw/meet
+    #     BROKER_OUTPUT_DIR=<수집기 ROOT_DIR>/esb/meet   (기본 C:/k8s/voice_collector/esb/meet · K8s /k8s/voice_collector/esb/meet)
     #
     #   응답의 filePath·상태의 outputDir 는 절대경로로 내려간다. 수집기가 그 경로에 파일이
     #   실제로 있는데 자기 수신 폴더 밖이면 5분을 기다리지 않고 즉시 실패시키기 위해서다.

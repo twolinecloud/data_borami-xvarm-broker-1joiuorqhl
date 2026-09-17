@@ -92,7 +92,7 @@ mvn spring-boot:run
 
 **프로파일을 안 주면 `local` 로 뜬다**(`spring.profiles.default: local`). IntelliJ 에서 Active profiles 를
 비워 둬도 같다. 포트 **8082**, `DUMMY` 어댑터라 XVARM 없이 재생 가능한 무음 WAV 를 만들고,
-출력 폴더는 **옆 레포 voice-collector 의 접견 수신 폴더**(`../data_voice-collector-x2daarjxe4/work/voice_raw/meet`)다.
+출력 폴더는 **voice-collector 의 ESB 수신(접견) 표준 폴더** `C:/k8s/voice_collector/esb/meet` 다(수집기 ROOT_DIR 자동 감지값과 동일).
 
 ```bash
 curl -X POST http://localhost:8082/api/v1/xvarm/extract -H "Content-Type: application/json" -d "{\"docId\":\"DOC1\",\"fileKey\":\"FK1\",\"requestId\":\"REQ-1\",\"fileName\":\"test.m4a\"}"
@@ -108,7 +108,7 @@ curl http://localhost:8082/api/v1/xvarm/extract/REQ-1
 두 레포가 `C:\Projects` 아래 나란히 있으면 아무 설정 없이 맞는다. 위치가 다르면 브로커 쪽에 준다:
 
 ```bash
-set BROKER_OUTPUT_DIR=<voice-collector 레포>/work/voice_raw/meet
+set BROKER_OUTPUT_DIR=<수집기 ROOT_DIR>/esb/meet
 mvn spring-boot:run
 ```
 
