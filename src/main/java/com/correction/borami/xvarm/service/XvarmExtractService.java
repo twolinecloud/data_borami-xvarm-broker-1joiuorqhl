@@ -83,7 +83,7 @@ public class XvarmExtractService {
         purgeExpired();
 
         Job existing = jobs.get(req.requestId());
-        if (existing != null) {
+        if (existing != null && stillUsable(existing)) {
             log.info("[Broker] 중복 요청 — 기존 작업 반환 (requestId={}, status={})",
                     req.requestId(), existing.status);
             return new ExtractAccepted(existing.requestId, existing.status, pathOf(existing));
@@ -198,6 +198,34 @@ public class XvarmExtractService {
 
     private String pathOf(Job job) {
         return job.filePath == null ? null : job.filePath.toString();
+    }
+
+    /**
+     * 이 기존 작업을 그대로 돌려줘도 되는가 — <b>산출 파일이 아직 거기 있어야 한다.</b>
+     *
+     * <p><b>왜 필요한가</b>: 멱등은 "같은 요청이면 두 번 추출하지 않는다" 는 뜻이지
+     * "파일이 없어도 DONE 이라고 답한다" 는 뜻이 아니다. 호출 측이 파일을 가져간 뒤
+     * (또는 초기화로) 지우고 같은 {@code requestId} 로 다시 요청하면, 우리는 DONE 과 함께
+     * 없는 경로를 돌려줬다. 호출 측은 오지 않을 파일을 수신 타임아웃까지 기다린다 —
+     * 개발계에서 접견 건마다 300초를 날리던 원인이 이것이다.</p>
+     *
+     * <p>{@code requestId} 에 EXEC_ID 를 넣어 배치마다 달라지게 해 두었지만, 시뮬레이터
+     * 초기화가 로그 컬렉터 이력을 지우면 채번이 {@code TST001} 부터 다시 시작한다.
+     * 60분 보관 창 안에서 같은 키가 되돌아오므로, 키의 유일성만으로는 막을 수 없다.</p>
+     *
+     * <p>아직 돌고 있는 작업(ACCEPTED/RUNNING)은 그대로 둔다 — 파일이 없는 것이 정상이다.</p>
+     */
+    private boolean stillUsable(Job job) {
+        if (job.status != JobStatus.DONE) {
+            return true;
+        }
+        if (job.filePath != null && Files.isRegularFile(job.filePath)) {
+            return true;
+        }
+        log.info("[Broker] 기존 작업의 산출 파일이 없어 다시 추출한다 — requestId={} file={}",
+                job.requestId, job.filePath);
+        jobs.remove(job.requestId);
+        return false;
     }
 
     /** 오래된 작업을 버린다 — 장기 구동 시 메모리가 계속 늘지 않게. */

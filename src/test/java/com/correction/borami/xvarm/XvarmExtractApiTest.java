@@ -171,4 +171,42 @@ class XvarmExtractApiTest {
         assertThat(json.path("adapter").asText()).isEqualTo("DUMMY");
         assertThat(json.path("outputDir").asText()).contains("xvarm_out");
     }
+
+    @Test
+    @DisplayName("산출 파일이 사라졌으면 같은 requestId 라도 다시 추출한다")
+    void reExtractsWhenTheOutputFileIsGone() throws Exception {
+        // 시뮬레이터 초기화가 로그 컬렉터 이력을 지우면 EXEC_ID 채번이 TST001 부터 다시 시작한다.
+        //   그래서 60분 보관 창 안에서 같은 requestId 가 되돌아오는데, 그 사이 초기화가
+        //   수신 파일까지 지워 놓는다. 예전에는 여기서 "DONE + 없는 경로" 를 돌려줘,
+        //   호출 측이 오지 않을 파일을 수신 타임아웃(개발계 300초)까지 기다렸다.
+        String rid = "VOC-20260923TST001-SIM-MEET-001";
+
+        mvc.perform(post("/api/v1/xvarm/extract").contentType(MediaType.APPLICATION_JSON)
+                .content(body(rid, "mock_meet_001.m4a")))
+                .andExpect(r -> assertThat(r.getResponse().getStatus()).isEqualTo(202));
+        Path out = waitForDone(rid);
+        assertThat(out).exists();
+
+        // 호출 측(또는 초기화)이 가져가고 지운다
+        Files.delete(out);
+
+        mvc.perform(post("/api/v1/xvarm/extract").contentType(MediaType.APPLICATION_JSON)
+                .content(body(rid, "mock_meet_001.m4a")))
+                .andExpect(r -> assertThat(r.getResponse().getStatus()).isEqualTo(202));
+        Path again = waitForDone(rid);
+
+        assertThat(again).as("다시 만들어 주지 않으면 호출 측은 영영 기다린다").exists();
+    }
+
+    /** DONE 이 될 때까지 짧게 기다렸다 산출 경로를 돌려준다. */
+    private Path waitForDone(String requestId) throws Exception {
+        for (int i = 0; i < 100; i++) {
+            var st = service.status(requestId);
+            if (st != null && "DONE".equals(String.valueOf(st.status()))) {
+                return Path.of(st.filePath());
+            }
+            Thread.sleep(50);
+        }
+        throw new AssertionError("추출이 끝나지 않았다 — " + requestId);
+    }
 }
