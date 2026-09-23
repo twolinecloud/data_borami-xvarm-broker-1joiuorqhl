@@ -40,12 +40,47 @@ public class DummyXvarmAdapter implements XvarmAdapter {
 
         Files.createDirectories(outputDir);
         Path file = outputDir.resolve(fileNameOf(request));
+
+        // fileKey 가 실제로 읽히면 그것을 가져온다 — XVARM 이 하는 일이 바로 그것이다.
+        Path src = source(request);
+        if (src != null) {
+            Files.copy(src, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            log.info("[XVARM:DUMMY] 원본 전달 — {} ({} bytes) ← {}",
+                    file.getFileName(), Files.size(file), src);
+            return file;
+        }
+
         byte[] audio = SilentWav.of(props.extract().dummyAudioSeconds());
         Files.write(file, audio, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-
-        log.info("[XVARM:DUMMY] 파일 생성 — {} ({} bytes) docId={} fileKey={}",
+        log.info("[XVARM:DUMMY] 원본이 없어 더미 생성 — {} ({} bytes) docId={} fileKey={}",
                 file.getFileName(), audio.length, request.docId(), request.fileKey());
         return file;
+    }
+
+    /**
+     * {@code fileKey} 가 가리키는 실제 파일 — 읽을 수 없으면 {@code null}.
+     *
+     * <p><b>왜 원본을 가져오는가</b>: 예전에는 {@code fileKey} 를 보지 않고 늘 새 무음 WAV 를
+     * 만들었다. 그 결과 수집기가 받는 파일은 <b>DB 메타와 무관한 평문</b>이어서, 복호화를 REAL 로
+     * 올리면({@code CMMN_FILE_ENC_YN='Y'} 인 건) 평문에 AES 를 걸다가
+     * {@code IllegalBlockSizeException} 으로 접견 건이 전부 죽었다. 시뮬레이션 데이터가 원본을
+     * 실제로 암호화해 두어도, 이 어댑터가 그것을 쓰지 않으면 소용이 없다.</p>
+     *
+     * <p>읽을 수 없으면 종전대로 무음 WAV 를 만든다 — 원본 스토리지가 붙지 않은 환경에서도
+     * 브로커 연동 자체는 확인할 수 있어야 하기 때문이다.</p>
+     */
+    private Path source(ExtractRequest r) {
+        if (!StringUtils.hasText(r.fileKey())) {
+            return null;
+        }
+        try {
+            Path p = Path.of(r.fileKey().trim());
+            return Files.isRegularFile(p) && Files.isReadable(p) ? p : null;
+        } catch (RuntimeException e) {
+            // 경로로 해석되지 않는 키(진짜 XVARM 의 내부 식별자 등) — 더미로 간다
+            log.debug("[XVARM:DUMMY] fileKey 를 경로로 읽지 못했다 — {} ({})", r.fileKey(), e.getMessage());
+            return null;
+        }
     }
 
     /** 경로 구분자나 상위 디렉터리 참조가 섞여 들어오지 않게 이름만 뽑는다. */
